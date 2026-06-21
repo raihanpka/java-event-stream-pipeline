@@ -6,7 +6,7 @@ This document is the canonical architecture reference. It describes the design, 
 
 ## 1. Philosophy
 
-- **One deployable unit.** One Spring Boot application, one Docker image, one Helm chart. Internally modular via packages and clean architecture layers. The modularity serves code organization, not deployment topology.
+- **One deployable unit.** One Spring Boot application, one Docker image. Internally modular via packages and clean architecture layers. The modularity serves code organization, not deployment topology.
 - **Schema-agnostic.** The pipeline stores and processes whatever CloudEvents payload you send. Add new event types without changing infrastructure.
 - **Generic, not specialized.** Bromo is a boilerplate for event-driven data pipelines. Use it for AI telemetry, business metrics, IoT sensor data, audit logs, or anything else. The example event types (completions, actions, feedback) are just examples.
 - **Use the library, don't wrap the library.** Spring Kafka, Spring Data Cassandra, Spring Data JPA, and Spring Data Redis provide everything needed. Configure them, inject them, use them. Do not build abstractions on top of abstractions.

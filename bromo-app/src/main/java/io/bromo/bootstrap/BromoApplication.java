@@ -14,7 +14,7 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 @ConfigurationPropertiesScan(basePackages = "io.bromo.bootstrap.config")
 public class BromoApplication {
 
-    public static void main(String[] args) {
-        SpringApplication.run(BromoApplication.class, args);
-    }
+  public static void main(String[] args) {
+    SpringApplication.run(BromoApplication.class, args);
+  }
 }

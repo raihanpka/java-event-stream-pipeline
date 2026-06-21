@@ -8,11 +8,14 @@
 plugins {
     alias(libs.plugins.spring.boot) apply false
     alias(libs.plugins.spring.dependency.management) apply false
+    alias(libs.plugins.spotless) apply false
 }
 
 subprojects {
     group = "io.bromo"
     version = "0.1.0-SNAPSHOT"
+
+    plugins.apply("com.diffplug.spotless")
 
     plugins.withType<JavaPlugin> {
         extensions.configure<JavaPluginExtension> {
@@ -21,6 +24,15 @@ subprojects {
             }
             sourceCompatibility = JavaVersion.VERSION_21
             targetCompatibility = JavaVersion.VERSION_21
+        }
+    }
+
+    plugins.withId("com.diffplug.spotless") {
+        extensions.configure<com.diffplug.gradle.spotless.SpotlessExtension> {
+            java {
+                googleJavaFormat("1.35.0")
+                removeUnusedImports()
+            }
         }
     }
 

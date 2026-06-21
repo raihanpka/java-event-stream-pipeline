@@ -94,3 +94,12 @@ Ask: "Will there ever be a second implementation of this?"
 - **Integration:** Testcontainers for Kafka, Cassandra, PostgreSQL, Redis.
 - **Architecture:** ArchUnit in every module. Verifies package dependency rules.
 - **Fixtures:** Deterministic values committed to repo. No random data generation.
+
+## 9. Agent Workflow
+
+- **Never auto-commit.** Stage and commit only when the user explicitly asks in the current message. Do not run `git add` + `git commit` without an explicit instruction like "commit", "push", or "commit and push".
+- **Never auto-push.** Do not run `git push` without an explicit instruction, even after a commit is made locally.
+- The user reviews every commit message and every push target before they happen.
+- **Exception scope is narrow:** if the user says "commit" in a message, that authorizes the commit only. A subsequent push still needs a separate explicit ask. Same for "push" by itself (which presupposes a commit is already made).
+- **Verification before commit:** before staging anything, run `./gradlew build` (or the relevant narrower task) and confirm the build is green. A failing build is not commit-worthy.
+- **Local-only by default:** all work stays in the working tree until the user explicitly asks to commit. No surprise commits at the end of a long task.

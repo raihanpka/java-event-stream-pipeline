@@ -7,31 +7,60 @@
 
 *An event streaming pipeline boilerplate.* Send any event as CloudEvents over HTTP. It goes to Kafka, gets processed by Kafka Streams, lands in Cassandra. Query it via REST API. Export to PostHog or Webhooks.
 
-**One deployable unit.** One Spring Boot application, one Docker image, one Helm chart. Internally modular (domain, application, infrastructure, web). Fork it, define your own event types, wire your own processor logic, and you have a production-ready event pipeline.
+**One deployable unit.** One Spring Boot application, one Docker image. Internally modular (domain, application, infrastructure, web). Fork it, define your own event types, wire your own processor logic, and you have a production-ready event pipeline.
 
 *Named after Mount Bromo.* Like volcanologists measure emissions to understand a mountain, Bromo measures your application's events to make them observable.
 
 ---
 
+## Features
+
+- **CloudEvents-native.** CNCF standard. Define your own event types. Any source, any language.
+- **Schema-agnostic.** The pipeline does not inspect your event payload. Add new types without changing infrastructure.
+- **ScyllaDB ready.** Apache Cassandra is the default wide-column store. ScyllaDB works as a drop-in alternative (CQL-compatible, no code changes). See [docs/SCYLLADB.md](docs/SCYLLADB.md).
+- **One deployable unit.** Single Docker image, single Helm chart (soon). Run it anywhere.
+- **Apache Kafka + Kafka Streams.** Durable event backbone. In-process stream processing.
+- **Cassandra for Time-series data.** Write-optimized, wide-column. Partitioned by event type and time.
+- **Pluggable sinks.** Export to PostHog, webhooks, or anything. Add your own via `AnalyticsSink` interface.
+- **Internally modular.** Clean architecture with domain, application, infrastructure, and web layers.
+- **GraalVM native.** Optional AOT compilation. Sub-100ms startup, ~64 MB RSS.
+- **Not a platform.** No UI, no proprietary SDK, no fixed schema.
+
+---
+
 ## Quick Start
 
-**Prerequisites:** Docker Engine 24+ and Docker Compose v2.
+**Prerequisites:**
+- Docker Engine 25+ and Docker Compose
+- For local development: **JDK 21+ LTS**. The Gradle wrapper is included, no other tools required.
+
+### Step 1: Start the infrastructure
 
 ```bash
 git clone https://github.com/raihanpka/bromo-event-pipeline
 cd bromo-event-pipeline
 docker compose -f infra/docker/docker-compose.yml up -d
+# Default wide-column store is Apache Cassandra.
+# For ScyllaDB instead, add --profile scylladb.
 ```
 
-That is it. Docker Compose pulls all images (Kafka, Cassandra, PostgreSQL, Redis from Docker Hub, Bromo from GHCR), creates the network, sets environment variables, and starts everything.
+This pulls and starts Kafka, Cassandra, PostgreSQL, and Redis. Wait about 60 seconds for Cassandra to finish bootstrapping.
 
-Send a test event:
+### Step 2: Run the Bromo application
+
+```bash
+./gradlew :bromo-app:bootRun --args='--spring.profiles.active=prod'
+```
+
+The app starts on http://localhost:8080. For a containerized run, a Helm deployment, or a pre-built image, see [Deployment Options](#deployment-options).
+
+### Step 3: Send and query events
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/events \
-  -H "Content-Type: application/cloud-events+json" \
+  -H "Content-Type: application/cloudevents+json" \
   -d '{
-    "spec-version": "1.0",
+    "specversion": "1.0",
     "source": "my-app",
     "type": "com.example.completion.v1",
     "id": "evt_001",
@@ -46,67 +75,13 @@ Query stored events:
 curl http://localhost:8080/api/v1/events?source=my-app
 ```
 
-Everything autoconfigures through the compose file. Kafka, Cassandra, PostgreSQL, and Redis get their default settings. Bromo discovers them via environment variables.
-
----
-
-## Features
-
-- **CloudEvents-native.** CNCF standard. Define your own event types. Any source, any language.
-- **Schema-agnostic.** The pipeline does not inspect your event payload. Add new types without changing infrastructure.
-- **One deployable unit.** Single Docker image, single Helm chart. Run it anywhere.
-- **Kafka + Kafka Streams.** Durable event backbone. In-process stream processing.
-- **Cassandra time-series.** Write-optimized, wide-column. Partitioned by event type and time.
-- **Pluggable sinks.** Export to PostHog, webhooks, or anything. Add your own via `AnalyticsSink` interface.
-- **Internally modular.** Clean architecture with domain, application, infrastructure, and web layers.
-- **GraalVM native.** Optional AOT compilation. Sub-100ms startup, ~64 MB RSS.
-- **Not a platform.** No UI, no proprietary SDK, no fixed schema.
+The app reads from the in-memory store or Cassandra depending on the active profile and connectivity. With the default `prod` profile, the in-memory store acts as a fallback when Cassandra is unreachable.
 
 ---
 
 ## Architecture
 
 ![Bromo event pipeline architecture](docs/images/event-pipeline-architecture.png)
-
-### Data Flow
-
-```mermaid
-flowchart TB
-    Client["Your Application (any HTTP client)"]
-
-    subgraph Bromo["Bromo Application (Spring Boot)"]
-        WebIngest["web/ingestion<br/>POST /api/v1/events"]
-        KafkaProd["Kafka Producer<br/>KafkaTemplate"]
-        WebQuery["web/query<br/>GET /api/v1/events<br/>GET /api/v1/metrics"]
-        Streams["Kafka Streams (in-process)<br/>dedup + enrich + aggregate + alert"]
-        CassandraRepo["Cassandra Repos<br/>events_by_source<br/>metrics_by_hour"]
-        PostgresRepo["PostgreSQL Repos<br/>api_keys + tenants + alert_rules"]
-        RedisCache["Redis<br/>rate limit + JWT blacklist"]
-        PostHogSink["PostHog Sink<br/>analytics export (async)"]
-    end
-
-    Kafka["Apache Kafka (KRaft)"]
-    Cassandra["Apache Cassandra"]
-    Postgres["PostgreSQL 16"]
-    Redis["Redis 7"]
-    PostHog["PostHog API"]
-
-    Client -->|CloudEvents 1.0| WebIngest
-    WebIngest --> KafkaProd
-    KafkaProd -->|raw.events.v1| Kafka
-    Kafka --> Streams
-    Streams -->|enriched events| Cassandra
-    Streams -->|aggregated metrics| Cassandra
-    Streams -->|alert events| Postgres
-    Streams --> PostHogSink
-    PostHogSink -->|async| PostHog
-    WebQuery --> CassandraRepo
-    WebQuery --> PostgresRepo
-    WebQuery --> RedisCache
-    CassandraRepo --> Cassandra
-    PostgresRepo --> Postgres
-    RedisCache --> Redis
-```
 
 ### Project Structure
 
@@ -144,29 +119,11 @@ cd bromo-event-pipeline/infra/docker
 docker compose up -d
 ```
 
-One command starts Kafka, Cassandra, PostgreSQL, Redis, and the Bromo app. All images auto-pulled.
+One command starts Kafka, Cassandra, PostgreSQL, Redis, and the Bromo app. All images auto-pulled with this configuration.
 
 ### Pre-built Docker Image
 
-```bash
-docker pull ghcr.io/raihanpka/bromo:bromo-app:latest
-
-docker run -d \
-  --name bromo \
-  -p 8080:8080 \
-  -e KAFKA_BOOTSTRAP_SERVERS=host.docker.internal:9092 \
-  -e CASSANDRA_CONTACT_POINTS=host.docker.internal:9042 \
-  ghcr.io/raihanpka/bromo:bromo-app:latest
-```
-
-### Kubernetes with Helm
-
-```bash
-helm install bromo ./infra/helm/bromo \
-  --namespace bromo --create-namespace
-```
-
-The chart deploys the Bromo app. Infrastructure (Kafka, Cassandra) can be provided externally or added as chart dependencies.
+> Soon will be pre-built Docker Hub Container or GHCR Image.
 
 ---
 
@@ -175,7 +132,7 @@ The chart deploys the Bromo app. Infrastructure (Kafka, Cassandra) can be provid
 ### Prerequisites
 
 - JDK 21+ LTS (Temurin or GraalVM recommended; system JDK builds the project, no toolchain lock-in)
-- Docker Engine 26+
+- Docker Engine 25+
 - (Optional) GraalVM CE 25+ for native images
 
 ### Clone and Build
@@ -207,6 +164,7 @@ Environment variables for the Bromo app:
 ```bash
 KAFKA_BOOTSTRAP_SERVERS=localhost:9092
 CASSANDRA_CONTACT_POINTS=localhost:9042
+SCYLLADB_CONTACT_POINTS=scylladb:9042   # only when using --profile scylladb
 SPRING_PROFILES_ACTIVE=prod
 POSTHOG_API_KEY=phc_xxx
 POSTHOG_HOST=https://app.posthog.com
@@ -221,11 +179,12 @@ Full reference: [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
 | Link                                           | About                                    |
 |------------------------------------------------|------------------------------------------|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)   | Full architecture, tech stack, data flow |
-| [docs/AGENTS.md](docs/AGENTS.md)               | Code conventions and standards           |
+| [docs/AGENTS.md](docs/AGENTS.md)               | Rules and standards for AI Agents        |
 | [docs/EVENTS.md](docs/EVENTS.md)               | Event schema (define your own)           |
 | [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | Environment variable reference           |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)       | Docker, Helm, GraalVM deployment         |
-| [benchmarks/](benchmarks/)                     | Performance data (once built)            |
+| [docs/SCYLLADB.md](docs/SCYLLADB.md)           | ScyllaDB as Cassandra alternative        |
+| [benchmarks/](benchmarks)                      | Performance data (once built)            |
 
 ---
 
