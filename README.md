@@ -1,11 +1,11 @@
 # Bromo: Event Pipeline Boilerplate
 
 [![Java 21](https://img.shields.io/badge/Java-21-blue?logo=openjdk&logoColor=white)](https://openjdk.org/projects/jdk/21/)
-[![Spring Boot 4](https://img.shields.io/badge/Spring_Boot-4.0-green?logo=spring&logoColor=white)](https://spring.io/projects/spring-boot)
+[![Spring Boot 4.1](https://img.shields.io/badge/Spring_Boot-4.1-green?logo=spring&logoColor=white)](https://spring.io/projects/spring-boot)
 [![GraalVM](https://img.shields.io/badge/GraalVM-native-orange?logo=graalvm&logoColor=white)](https://www.graalvm.org/)
 [![MIT License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
-*An event pipeline boilerplate.* Send any event as CloudEvents over HTTP. It goes to Kafka, gets processed by Kafka Streams, lands in Cassandra. Query it via REST API. Export to PostHog or Webhooks.
+*An event streaming pipeline boilerplate.* Send any event as CloudEvents over HTTP. It goes to Kafka, gets processed by Kafka Streams, lands in Cassandra. Query it via REST API. Export to PostHog or Webhooks.
 
 **One deployable unit.** One Spring Boot application, one Docker image, one Helm chart. Internally modular (domain, application, infrastructure, web). Fork it, define your own event types, wire your own processor logic, and you have a production-ready event pipeline.
 
@@ -65,6 +65,8 @@ Everything autoconfigures through the compose file. Kafka, Cassandra, PostgreSQL
 ---
 
 ## Architecture
+
+![Bromo event pipeline architecture](docs/images/event-pipeline-architecture.png)
 
 ### Data Flow
 
@@ -172,9 +174,9 @@ The chart deploys the Bromo app. Infrastructure (Kafka, Cassandra) can be provid
 
 ### Prerequisites
 
-- JDK 21 (Temurin recommended)
-- Docker Engine 24+ (for Testcontainers and infra)
-- (Optional) GraalVM CE 21+ for native images
+- JDK 21+ LTS (Temurin or GraalVM recommended; system JDK builds the project, no toolchain lock-in)
+- Docker Engine 26+
+- (Optional) GraalVM CE 25+ for native images
 
 ### Clone and Build
 
