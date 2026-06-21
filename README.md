@@ -66,31 +66,66 @@ Everything autoconfigures through the compose file. Kafka, Cassandra, PostgreSQL
 
 ## Architecture
 
+### Data Flow
+
+```mermaid
+flowchart TB
+    Client["Your Application (any HTTP client)"]
+
+    subgraph Bromo["Bromo Application (Spring Boot)"]
+        WebIngest["web/ingestion<br/>POST /api/v1/events"]
+        KafkaProd["Kafka Producer<br/>KafkaTemplate"]
+        WebQuery["web/query<br/>GET /api/v1/events<br/>GET /api/v1/metrics"]
+        Streams["Kafka Streams (in-process)<br/>dedup + enrich + aggregate + alert"]
+        CassandraRepo["Cassandra Repos<br/>events_by_source<br/>metrics_by_hour"]
+        PostgresRepo["PostgreSQL Repos<br/>api_keys + tenants + alert_rules"]
+        RedisCache["Redis<br/>rate limit + JWT blacklist"]
+        PostHogSink["PostHog Sink<br/>analytics export (async)"]
+    end
+
+    Kafka["Apache Kafka (KRaft)"]
+    Cassandra["Apache Cassandra"]
+    Postgres["PostgreSQL 16"]
+    Redis["Redis 7"]
+    PostHog["PostHog API"]
+
+    Client -->|CloudEvents 1.0| WebIngest
+    WebIngest --> KafkaProd
+    KafkaProd -->|raw.events.v1| Kafka
+    Kafka --> Streams
+    Streams -->|enriched events| Cassandra
+    Streams -->|aggregated metrics| Cassandra
+    Streams -->|alert events| Postgres
+    Streams --> PostHogSink
+    PostHogSink -->|async| PostHog
+    WebQuery --> CassandraRepo
+    WebQuery --> PostgresRepo
+    WebQuery --> RedisCache
+    CassandraRepo --> Cassandra
+    PostgresRepo --> Postgres
+    RedisCache --> Redis
 ```
-  Your Application (any HTTP client)
-       |
-       | CloudEvents 1.0 (POST /api/v1/events)
-       v
-+----------------------------------------------+
-|             Bromo Application                 |
-|  web/ingestion     -->  Kafka producer        |
-|  POST /api/v1/events     KafkaTemplate        |
-|                                               |
-|  web/query           <--  Cassandra repos     |
-|  GET /api/v1/events      events_by_source     |
-|  GET /api/v1/metrics     metrics_by_hour      |
-|                                               |
-|  Kafka Streams  -->  dedup + enrich + alert   |
-|  (in-process)       aggregate + detect        |
-|                                               |
-|  PostgreSQL  (metadata, config, auth, alerts) |
-|  Redis       (rate limiting, JWT blacklist)   |
-|  PostHog     (analytics export, async sink)   |
-+----------------------------------------------+
-       |          |           |          |
-       v          v           v          v
-    Kafka     Cassandra   PostgreSQL    Redis
-   (KRaft)   (events)    (metadata)   (cache)
+
+### Project Structure
+
+```
+bromo-event-pipeline/
+├── bromo-app/                  # The application (one module)
+│   ├── src/main/java/io/bromo/
+│   │   ├── domain/             # Pure Java, no framework imports
+│   │   ├── application/        # Use cases, no framework imports
+│   │   ├── infrastructure/     # Kafka, Cassandra, PostgreSQL, Redis, export
+│   │   ├── web/                # REST controllers
+│   │   └── bootstrap/          # @SpringBootApplication, config
+│   ├── build.gradle.kts
+│   └── Dockerfile
+├── bromo-core/                 # Shared library (optional, Maven Central)
+├── infra/docker/               # Docker Compose (defines everything)
+├── infra/helm/                 # Single Helm chart
+├── benchmarks/                 # Performance data (once built)
+├── build.gradle.kts
+├── settings.gradle.kts
+└── gradle/libs.versions.toml
 ```
 
 Full architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
@@ -160,28 +195,6 @@ Gradle wrapper included. No separate Gradle install needed.
 ```
 
 One image produced. Multi-stage Dockerfile with distroless runtime.
-
-### Project Structure
-
-```
-bromo-event-pipeline/
-├── bromo-app/                  # The application (one module)
-│   ├── src/main/java/io/bromo/
-│   │   ├── domain/             # Pure Java, no framework imports
-│   │   ├── application/        # Use cases, no framework imports
-│   │   ├── infrastructure/     # Kafka, Cassandra, PostgreSQL, Redis, export
-│   │   ├── web/                # REST controllers
-│   │   └── bootstrap/          # @SpringBootApplication, config
-│   ├── build.gradle.kts
-│   └── Dockerfile
-├── bromo-core/                 # Shared library (optional, Maven Central)
-├── infra/docker/               # Docker Compose (defines everything)
-├── infra/helm/                 # Single Helm chart
-├── benchmarks/                 # Performance data (once built)
-├── build.gradle.kts
-├── settings.gradle.kts
-└── gradle/libs.versions.toml
-```
 
 ---
 
