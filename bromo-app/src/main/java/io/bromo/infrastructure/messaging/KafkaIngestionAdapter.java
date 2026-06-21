@@ -14,17 +14,25 @@ import org.springframework.stereotype.Service;
  *
  * <p>Producer config (defined in {@code application.yml}): {@code acks=all},
  * {@code enable.idempotence=true}.
+ *
+ * <p>Note: the {@code KafkaTemplate} is injected as a raw type (not
+ * parameterized) because Spring Boot 4.1 autoconfigures the bean with
+ * generic parameters derived from the producer properties, which may not
+ * match the explicit {@code <String, Object>} declaration. The call site
+ * still works because Java generics are erased at runtime.
  */
 @Service
 public class KafkaIngestionAdapter implements IngestionService {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaIngestionAdapter.class);
 
-    private final KafkaTemplate<String, Object> kafkaTemplate;
+    @SuppressWarnings("rawtypes")
+    private final KafkaTemplate kafkaTemplate;
+
     private final String topic;
 
     public KafkaIngestionAdapter(
-            KafkaTemplate<String, Object> kafkaTemplate,
+            @SuppressWarnings("rawtypes") KafkaTemplate kafkaTemplate,
             @Value("${bromo.kafka.topics.raw:raw.events.v1}") String topic) {
         this.kafkaTemplate = kafkaTemplate;
         this.topic = topic;
