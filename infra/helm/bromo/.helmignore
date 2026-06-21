@@ -1,0 +1,27 @@
+# Patterns to ignore when building packages.
+# This supports shell globbing, which is what most Linux shells support
+# but Windows cmd.exe and PowerShell do not.
+.DS_Store
+# Common VCS dirs
+.git/
+.gitignore
+.bzr/
+.bzrignore
+.hg/
+.hgignore
+.svn/
+# Common backup files
+*.swp
+*.bak
+*.tmp
+*.orig
+*~
+# Various IDEs
+.project
+.idea/
+*.tmproj
+.vscode/
+# Helm-specific
+OWNERS
+# Chart dependencies (uncomment to enable)
+# charts/

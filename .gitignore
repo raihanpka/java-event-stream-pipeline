@@ -178,9 +178,10 @@ gradle-app.setting
 *.hprof
 
 # Docker
-Dockerfile*
-docker-compose*.override.yml
+/Dockerfile*
+/docker-compose*.override.yml
 .docker/
+!bromo-app/Dockerfile
 
 # Kubernetes / Helm
 *.kubeconfig
