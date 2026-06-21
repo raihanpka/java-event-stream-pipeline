@@ -26,8 +26,8 @@ dependencies {
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.spring.boot.starter.data.redis)
 
-    // Kafka
-    implementation(libs.spring.kafka)
+    // Kafka (use Spring Boot starter so KafkaAutoConfiguration is on the classpath in 4.1 modular split)
+    implementation("org.springframework.boot:spring-boot-starter-kafka")
 
     // Drivers
     runtimeOnly(libs.postgresql.jdbc)

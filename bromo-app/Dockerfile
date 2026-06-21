@@ -64,7 +64,7 @@ ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
 # `aptosid/graalvm-ce:java21-21.0.2` or `ghcr.io/graalvm/graalvm-ce:java21-21.0.2`
 # as the buildkit builder for true native builds.
 # =============================================================================
-FROM ghcr.io/graalvm/graalvm-ce:java21-21.0.2 AS native
+FROM ghcr.io/graalvm/graalvm-ce:jdk-25.0.2 AS native
 
 WORKDIR /workspace
 COPY gradlew settings.gradle.kts build.gradle.kts gradle.properties ./
