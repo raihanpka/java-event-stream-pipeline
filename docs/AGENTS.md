@@ -48,6 +48,14 @@ Ask: "Will there ever be a second implementation of this?"
 - **No wildcard imports.**
 - **Javadoc** on public API methods only. Private methods: name them well.
 
+### Typography
+
+- **No em dash** (Unicode character U+2014, the long horizontal dash) in any output: code, comments, javadoc, markdown, terminal, log messages, commit messages, chat.
+  - Use comma, period, or hyphen (`-`) for asides and parentheticals.
+  - Replace "X, do not Y" with "X. Do not Y" (full stop) or "X, not Y".
+- **En dash** (`–`, U+2013) and **hyphen** (`-`) are allowed, including for repeated words in Indonesian ("kupu-kupu", "abu-abu", "berkali-kali") and ranges ("1-5", "2024-2026").
+- **Enforcement:** Spotless checkstyle + reviewer's eye. CI grep for `\u2014` in any committed file should return zero matches.
+
 ## 4. Spring Boot
 
 - **Use @ConfigurationProperties**, not @Value.
